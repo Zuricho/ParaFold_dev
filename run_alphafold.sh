@@ -63,7 +63,7 @@ while getopts ":d:o:p:i:t:u:c:m:R:bgrvsqfG" i; do
                 db_preset=$OPTARG
         ;;
         r)
-                amber_relaxation=false
+                amber_relaxation="none"
         ;;
         m)
                 model_selection=$OPTARG
@@ -115,7 +115,7 @@ if [[ "$db_preset" == "" ]] ; then
 fi
 
 if [[ "$amber_relaxation" == "" ]] ; then
-    amber_relaxation=true
+    amber_relaxation="all"
 fi
 
 if [[ "$model_selection" == "" ]] ; then
@@ -178,7 +178,7 @@ template_mmcif_dir="$data_dir/pdb_mmcif/mmcif_files"
 obsolete_pdbs_path="$data_dir/pdb_mmcif/obsolete.dat"
 pdb70_database_path="$data_dir/pdb70/pdb70"
 pdb_seqres_database_path="$data_dir/pdb_seqres/pdb_seqres.txt"
-uniclust30_database_path="$data_dir/uniclust30/uniclust30_2018_08/uniclust30_2018_08"   # We recommend this use the 2020 version of uniclust
+uniref30_database_path="$data_dir/uniclust30/uniclust30_2018_08/uniclust30_2018_08"   # We recommend this use the 2020 version of uniclust
 uniref90_database_path="$data_dir/uniref90/uniref90.fasta"
 uniprot_database_path="$data_dir/uniprot/uniprot.fasta"
 
@@ -189,7 +189,7 @@ fi
 
 if [[ "$db_preset" == "reduced_dbs" ]] ; then
     bfd_database_path=""
-    uniclust30_database_path=""
+    uniref30_database_path=""
 fi
 
 # Binary path (change me if required)
@@ -227,7 +227,7 @@ python $alphafold_script \
 --mgnify_database_path=$mgnify_database_path \
 --bfd_database_path=$bfd_database_path \
 --small_bfd_database_path=$small_bfd_database_path \
---uniclust30_database_path=$uniclust30_database_path \
+--uniref30_database_path=$uniref30_database_path \
 --uniprot_database_path=$uniprot_database_path \
 --pdb70_database_path=$pdb70_database_path \
 --pdb_seqres_database_path=$pdb_seqres_database_path \
@@ -237,7 +237,7 @@ python $alphafold_script \
 --db_preset=$db_preset \
 --model_preset=$model_preset \
 --benchmark=$benchmark \
---run_relax=$amber_relaxation \
+--models_to_relax=$amber_relaxation \
 --use_gpu_relax=$use_gpu_relax \
 --recycling=$recycling \
 --run_feature=$run_feature \
