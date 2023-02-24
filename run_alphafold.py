@@ -141,9 +141,9 @@ flags.DEFINE_boolean('use_gpu_relax', None, 'Whether to relax on GPU. '
                      'Relax on GPU can be much faster than CPU, so it is '
                      'recommended to enable if possible. GPUs must be available'
                      ' if this setting is enabled.')
-flags.DEFINE_integer('recycling', 3, 'Set number of recyclings')    # not used
+flags.DEFINE_integer('recycling', 3, 'Set number of recyclings')
 flags.DEFINE_boolean('run_feature', False, 'Calculate MSA and template to generate '
-                     'feature')      # not used
+                     'feature')
 
 FLAGS = flags.FLAGS
 
@@ -183,7 +183,8 @@ def predict_structure(
     amber_relaxer: relax.AmberRelaxation,
     benchmark: bool,
     random_seed: int,
-    models_to_relax: ModelsToRelax):
+    models_to_relax: ModelsToRelax,
+    run_feature: bool):
   """Predicts structure using AlphaFold for the given sequence."""
   logging.info('Predicting %s', fasta_name)
   timings = {}
@@ -196,15 +197,26 @@ def predict_structure(
 
   # Get features.
   t_0 = time.time()
-  feature_dict = data_pipeline.process(
-      input_fasta_path=fasta_path,
-      msa_output_dir=msa_output_dir)
-  timings['features'] = time.time() - t_0
+  features_output_path = os.path.join(output_dir, 'features.pkl')
+  
+  # If we already have feature.pkl file, skip the MSA and template finding step
+  if os.path.exists(features_output_path):
+    feature_dict = pickle.load(open(features_output_path, 'rb'))
+  
+  else:
+    feature_dict = data_pipeline.process(
+        input_fasta_path=fasta_path,
+        msa_output_dir=msa_output_dir)
 
   # Write out features as a pickled dictionary.
   features_output_path = os.path.join(output_dir, 'features.pkl')
   with open(features_output_path, 'wb') as f:
     pickle.dump(feature_dict, f, protocol=4)
+
+  timings['features'] = time.time() - t_0
+
+  if run_feature:    # if not run_feature, skip the rest of the function
+    return 0
 
   unrelaxed_pdbs = {}
   unrelaxed_proteins = {}
@@ -419,8 +431,11 @@ def main(argv):
     model_config = config.model_config(model_name)
     if run_multimer_system:
       model_config.model.num_ensemble_eval = num_ensemble
+      model_config.model.num_recycle = FLAGS.recycling
     else:
       model_config.data.eval.num_ensemble = num_ensemble
+      model_config.model.num_recycle = FLAGS.recycling
+      model_config.data.common.num_recycle = FLAGS.recycling
     model_params = data.get_model_haiku_params(
         model_name=model_name, parameter_path=FLAGS.parameter_path)
     model_runner = model.RunModel(model_config, model_params)
@@ -455,7 +470,9 @@ def main(argv):
         amber_relaxer=amber_relaxer,
         benchmark=FLAGS.benchmark,
         random_seed=random_seed,
-        models_to_relax=FLAGS.models_to_relax)
+        models_to_relax=FLAGS.models_to_relax,
+        run_feature = FLAGS.run_feature)
+    logging.info('%s AlphaFold structure prediction COMPLETE', fasta_name)
 
 
 if __name__ == '__main__':
