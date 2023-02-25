@@ -208,10 +208,10 @@ def predict_structure(
         input_fasta_path=fasta_path,
         msa_output_dir=msa_output_dir)
 
-  # Write out features as a pickled dictionary.
-  features_output_path = os.path.join(output_dir, 'features.pkl')
-  with open(features_output_path, 'wb') as f:
-    pickle.dump(feature_dict, f, protocol=4)
+    # Write out features as a pickled dictionary.
+    features_output_path = os.path.join(output_dir, 'features.pkl')
+    with open(features_output_path, 'wb') as f:
+      pickle.dump(feature_dict, f, protocol=4)
 
   timings['features'] = time.time() - t_0
 
