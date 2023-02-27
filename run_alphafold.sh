@@ -24,10 +24,10 @@ usage() {
         echo "-f <run_feature>        Only run MSA and template search to generate feature file"
         echo "-G <use_gpu_relax>      Disable GPU relax"
         echo "-s <skip_msa>           Skip MSA and template step, generate single sequence feature for ultimately fast prediction"
-        echo "-e <random_seed>        Set random seed"
 
         echo "Future Parameters (You cannot use them now):"
-        
+
+        echo "-e <random_seed>        Set random seed"
         echo "-q <quick_mode>         Quick mode. Use small BFD database, no templates"
         echo ""
         exit 1
@@ -150,7 +150,7 @@ if [[ "$use_gpu_relax" == "" ]] ; then
 fi
 
 if [[ "$random_seed" == "" ]] ; then
-    random_seed=None
+    random_seed=""
 fi
 
 # This bash script looks for the run_alphafold.py script in its current working directory, if it does not exist then exits
@@ -216,10 +216,10 @@ if [[ "$model_preset" == "multimer" ]] ; then
     pdb70_database_path=""
 fi
 
-if [[ "skip_msa" == true ]] ; then
+if [[ "$skip_msa" == true ]] ; then
     python $(readlink -f $(dirname $0))/parafold/fakemsa.py \
     --fasta_paths=$fasta_path \
-    --output_dir=$output_dir \
+    --output_dir=$output_dir
 fi
 
 # Run AlphaFold with required parameters
@@ -248,7 +248,6 @@ python $alphafold_script \
 --db_preset=$db_preset \
 --model_preset=$model_preset \
 --benchmark=$benchmark \
---random_seed=$random_seed \
 --num_multimer_predictions_per_model=5 \
 --use_precomputed_msas=$skip_msa \
 --models_to_relax=$models_to_relax \
@@ -256,3 +255,4 @@ python $alphafold_script \
 --recycling=$recycling \
 --run_feature=$run_feature \
 --logtostderr
+

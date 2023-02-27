@@ -71,7 +71,7 @@ def generate_fake_msa(
       raise ValueError(
           f'More than one input sequence found in {fasta_path}.')
     input_sequence = input_seqs[0]
-    input_description = input_descs[0]
+    input_description = input_descs[0].split()[0]
     num_res = len(input_sequence)
 
     # Generate fake MSA
@@ -108,7 +108,7 @@ def main(argv):
     
     for i, fasta_path in enumerate(FLAGS.fasta_paths):
         fasta_name = fasta_names[i]
-        generate_fake_msa(fasta_path, fasta_name, "FLAGS.output_dir_base")
+        generate_fake_msa(fasta_path, fasta_name, FLAGS.output_dir)
 
 
 if __name__ == '__main__':
@@ -117,3 +117,4 @@ if __name__ == '__main__':
       'output_dir'
   ])
     app.run(main)
+
