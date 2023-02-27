@@ -23,17 +23,17 @@ usage() {
         echo "-R <recycling>          Set cycles for recycling (default: '3')"
         echo "-f <run_feature>        Only run MSA and template search to generate feature file"
         echo "-G <use_gpu_relax>      Disable GPU relax"
-        
-        echo "Future Parameters (You cannot use them now):"
         echo "-s <skip_msa>           Skip MSA and template step, generate single sequence feature for ultimately fast prediction"
-        echo "-q <quick_mode>         Quick mode. Use small BFD database, no templates"
         echo "-e <random_seed>        Set random seed"
-        echo "-P <precomputed_msas>   Use precomputed MSAs"
+
+        echo "Future Parameters (You cannot use them now):"
+        
+        echo "-q <quick_mode>         Quick mode. Use small BFD database, no templates"
         echo ""
         exit 1
 }
 
-while getopts ":d:o:p:i:t:u:c:m:R:r:bgvsqfG" i; do
+while getopts ":d:o:p:i:t:u:c:m:R:r:e:bgvsqfG" i; do
         case "${i}" in
         d)
                 data_dir=$OPTARG
@@ -50,23 +50,29 @@ while getopts ":d:o:p:i:t:u:c:m:R:r:bgvsqfG" i; do
         t)
                 max_template_date=$OPTARG
         ;;
-        b)
-                benchmark=true
-        ;;
-        g)
-                use_gpu=true
-        ;;
         u)
                 gpu_devices=$OPTARG
         ;;
         c)
                 db_preset=$OPTARG
         ;;
+        m)
+                model_selection=$OPTARG
+        ;;
+        R)
+                recycling=$OPTARG
+        ;;
         r)
                 models_to_relax=$OPTARG
         ;;
-        m)
-                model_selection=$OPTARG
+        e)
+                random_seed=$OPTARG
+        ;;
+        b)
+                benchmark=true
+        ;;
+        g)
+                use_gpu=true
         ;;
         v)
                 visualizaion=true
@@ -76,9 +82,6 @@ while getopts ":d:o:p:i:t:u:c:m:R:r:bgvsqfG" i; do
         ;;
         q)
                 quick_mode=true
-        ;;
-        R)
-                recycling=$OPTARG
         ;;
         f)
                 run_feature=true
@@ -146,6 +149,9 @@ if [[ "$use_gpu_relax" == "" ]] ; then
     use_gpu_relax=true
 fi
 
+if [[ "$random_seed" == "" ]] ; then
+    random_seed=None
+fi
 
 # This bash script looks for the run_alphafold.py script in its current working directory, if it does not exist then exits
 #current_working_dir=$(pwd)
@@ -201,7 +207,6 @@ hmmsearch_binary_path=$(which hmmsearch)
 hmmbuild_binary_path=$(which hmmbuild)
 
 # Temporary
-# Missing random_seed, use_precomputed_msas
 if [[ "$model_preset" == "monomer" || "$model_preset" == "monomer_ptm" ]] ; then
     pdb_seqres_database_path=""
     uniprot_database_path=""
@@ -209,6 +214,12 @@ fi
 
 if [[ "$model_preset" == "multimer" ]] ; then
     pdb70_database_path=""
+fi
+
+if [[ "skip_msa" == true ]] ; then
+    python $(readlink -f $(dirname $0))/parafold/fakemsa.py \
+    --fasta_paths=$fasta_path \
+    --output_dir=$output_dir \
 fi
 
 # Run AlphaFold with required parameters
@@ -237,6 +248,9 @@ python $alphafold_script \
 --db_preset=$db_preset \
 --model_preset=$model_preset \
 --benchmark=$benchmark \
+--random_seed=$random_seed \
+--num_multimer_predictions_per_model=5 \
+--use_precomputed_msas=$skip_msa \
 --models_to_relax=$models_to_relax \
 --use_gpu_relax=$use_gpu_relax \
 --recycling=$recycling \
