@@ -217,7 +217,7 @@ if [[ "$model_preset" == "multimer" ]] ; then
 fi
 
 if [[ "$skip_msa" == true ]] ; then
-    python $(readlink -f $(dirname $0))/parafold/fakemsa.py \
+    python $(readlink -f $(dirname $0))/parafold/create_fakemsa.py \
     --fasta_paths=$fasta_path \
     --output_dir=$output_dir
 fi

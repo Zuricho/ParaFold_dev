@@ -26,7 +26,7 @@ We recommend to install AlphaFold locally, and not using **docker**.
 
 ```bash
 # clone this repo
-git clone https://github.com/Zuricho/ParallelFold.git
+git clone https://github.com/Zuricho/ParaFold_dev.git
 
 # Create a miniconda environment for ParaFold/AlphaFold
 # Recommend you to use python 3.8, version < 3.7 have missing packages, python versions newer than 3.8 were not tested
@@ -73,10 +73,6 @@ Visit the [usage page](./docs/usage.md) to know how to run
 ParallelFold can help you accelerate AlphaFold when you want to predict multiple sequences. After dividing the CPU part and GPU part, users can finish feature step by multiple processors. Using ParaFold, you can run AlphaFold 2~3 times faster than DeepMind's procedure. 
 
 **If you have any question, please raise issues**
-
-
-
-
 
 
 

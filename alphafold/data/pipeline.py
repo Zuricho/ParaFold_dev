@@ -220,15 +220,18 @@ class DataPipeline:
           use_precomputed_msas=self.use_precomputed_msas)
       bfd_msa = parsers.parse_a3m(hhblits_bfd_uniref_result['a3m'])
 
+    # template features output
     templates_result = self.template_featurizer.get_templates(
         query_sequence=input_sequence,
         hits=pdb_template_hits)
 
+    # sequence features output
     sequence_features = make_sequence_features(
         sequence=input_sequence,
         description=input_description,
         num_res=num_res)
 
+    # msa features output
     msa_features = make_msa_features((uniref90_msa, bfd_msa, mgnify_msa))
 
     logging.info('Uniref90 MSA size: %d sequences.', len(uniref90_msa))
