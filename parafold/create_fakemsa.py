@@ -1,3 +1,4 @@
+# create_fakemsa.py can create 3 fake MSA files in your input folder, when using use_precomputed_msa=True, you can use these 3 fake MSA files to run parafold.
 # Warning: This file is only for monomers
 # Warning: This file is only for full BFD
 # Warning: This file is only for temporary use, it is not part of the AlphaFold2 pipeline
