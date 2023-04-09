@@ -210,7 +210,7 @@ def create_manual_feature(fasta_path, template_path):
 
     # Generate feature: template part, take one PDB file as template
     feature_dict.update(make_manual_template_features(
-                    path=template_path))
+                    pdb_path=template_path))
     
     return feature_dict
 
