@@ -1,4 +1,4 @@
-# create_empty_feature.py can create create empty feature.pkl file for parafold, make the parafold skip the MSA and template part
+# create_manual_feature.py can create create empty feature.pkl file for parafold, make the parafold skip the MSA and template part
 import numpy as np
 import pickle
 import residue_constants
@@ -17,6 +17,8 @@ flags.DEFINE_list(
     'basename is used to name the output directories for each prediction.')
 flags.DEFINE_string('output_dir', None, 'Path to a directory that will '
                     'store the results.')
+flags.DEFINE_string('template_path', None, 'Path to a PDB file that will '
+                    'be used as template.')
 
 
 FLAGS = flags.FLAGS
@@ -115,7 +117,75 @@ def make_empty_template_features(
 
 
 
-def create_empty_feature(fasta_path):
+def make_manual_template_features(pdb_path: str):
+    """Read PDB file, return a list containing atoms coordinates and positions"""
+    with open(pdb_path, 'r') as f:
+        lines = f.readlines()
+    
+    # get pdb id and chain id
+    file_name = pdb_path.split('/')[-1].split('.')[0]
+
+    atoms = []
+    for line in lines:
+        if line.startswith('ATOM'):
+            atom = line[12:16].strip()
+            res_name = line[17:20].strip()
+            res_id = int(line[22:26])
+            x = float(line[30:38])
+            y = float(line[38:46])
+            z = float(line[46:54])
+            atoms.append([atom, res_name, res_id, x, y, z])
+    
+    # get the number of residues
+    num_res = 0
+    for atom in atoms:
+        if atom[2] > num_res:
+            num_res = atom[2]
+    
+
+    # create residue list
+    residues = [[] for i in range(num_res)]
+    for atom in atoms:
+        residues[atom[2]-1].append(atom)
+
+    sequence = "".join([residue_constants.restype_3to1[residues[i][0][1]] for i in range(num_res)])
+    aa_type = residue_constants.sequence_to_onehot(sequence, residue_constants.HHBLITS_AA_TO_ID)
+    
+
+    
+    
+    all_positions = np.zeros([num_res, residue_constants.atom_type_num, 3])
+    all_positions_mask = np.zeros([num_res, residue_constants.atom_type_num], dtype=np.int64)
+
+
+    for res_index in range(num_res):
+        pos = np.zeros([residue_constants.atom_type_num, 3], dtype=np.float32)
+        mask = np.zeros([residue_constants.atom_type_num], dtype=np.float32)
+        
+        for atom in residues[res_index]:
+            if atom[0] not in residue_constants.atom_types:
+                continue
+            atom_type_index = residue_constants.atom_types.index(atom[0])
+            pos[atom_type_index, :] = atom[3:]
+            mask[atom_type_index] = 1.0
+        
+        all_positions[res_index, :, :] = pos
+        all_positions_mask[res_index, :] = mask
+
+
+    return (
+      {
+          'template_all_atom_positions': np.array([all_positions], dtype=TEMPLATE_FEATURES['template_all_atom_positions']),
+          'template_all_atom_masks': np.array([all_positions_mask], dtype=TEMPLATE_FEATURES['template_all_atom_masks']),
+          'template_sequence': np.array([sequence.encode()], dtype=TEMPLATE_FEATURES['template_sequence']),
+          'template_aatype': np.array([aa_type], dtype=TEMPLATE_FEATURES['template_aatype']),
+          'template_domain_names': np.array([f'{file_name.lower()}'.encode()], dtype=TEMPLATE_FEATURES['template_domain_names']),
+          'template_sum_probs': np.array([[100.0]], dtype=TEMPLATE_FEATURES['template_sum_probs']),
+      })
+
+
+
+def create_manual_feature(fasta_path, template_path):
     # Load input sequence.
     with open(fasta_path) as f:
         input_fasta_str = f.read()
@@ -138,10 +208,9 @@ def create_empty_feature(fasta_path):
                     sequence=input_sequence,
                     num_res=num_res))
 
-    # Generate feature: template part
-    feature_dict.update(make_empty_template_features(
-                    sequence=input_sequence,
-                    num_res=num_res))
+    # Generate feature: template part, take one PDB file as template
+    feature_dict.update(make_manual_template_features(
+                    path=template_path))
     
     return feature_dict
 
@@ -151,9 +220,9 @@ def create_empty_feature(fasta_path):
 
 
 
-def empty_feature(fasta_path, output_dir):
+def manual_feature(fasta_path, output_dir, template_path):
     # the first argument is the name of the script, so the second is the input file
-    feature_dict = create_empty_feature(fasta_path)
+    feature_dict = create_manual_feature(fasta_path, template_path)
 
     features_output_path = os.path.join(output_dir, 'features.pkl')
     with open(features_output_path, 'wb') as f:
@@ -176,12 +245,13 @@ def main(argv):
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
 
-        empty_feature(fasta_path, output_dir)
+        manual_feature(fasta_path, output_dir, FLAGS.template_path)
 
 
 if __name__ == '__main__':
     flags.mark_flags_as_required([
       'fasta_paths',
-      'output_dir'
+      'output_dir',
+      'template_path'
   ])
     app.run(main)
