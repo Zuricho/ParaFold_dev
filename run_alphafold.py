@@ -423,19 +423,26 @@ def main(argv):
     data_pipeline=get_data_pipeline()
   else:
     data_pipeline=None
-    
+
+  fasta_names = [pathlib.Path(p).stem for p in FLAGS.fasta_paths]
+  
   run_multimer_system = 'multimer' in FLAGS.model_preset
   if run_multimer_system:
     num_predictions_per_model = FLAGS.num_multimer_predictions_per_model
   else:
     num_predictions_per_model = 1
+
+    # the feature.pkl should already exist, otherwise rise error
+    feature_file_list = [os.path.join(FLAGS.output_dir, fasta_name, 'feature.pkl') 
+                         for fasta_name in fasta_names]
+    missing_files = [file for file in file_paths if not os.path.isfile(file)]
+    if missing_files:
+      raise FileNotFoundError(f"Error: The following files do not exist: {', '.join(missing_files)}")
     
   if FLAGS.model_preset == 'monomer_casp14':
     num_ensemble = 8
   else:
     num_ensemble = 1
-    
-  fasta_names = [pathlib.Path(p).stem for p in FLAGS.fasta_paths]
     
   model_runners = {}
   if FLAGS.model_names:
