@@ -98,10 +98,11 @@ flags.DEFINE_string('obsolete_pdbs_path', None, 'Path to file containing a '
                     'mapping from obsolete PDB IDs to the PDB IDs of their '
                     'replacements.')
 flags.DEFINE_enum('db_preset', 'full_dbs',
-                  ['full_dbs', 'reduced_dbs'],
+                  ['full_dbs', 'reduced_dbs', 'none'],
                   'Choose preset MSA database configuration - '
                   'smaller genetic database config (reduced_dbs) or '
-                  'full genetic database config  (full_dbs)')
+                  'full genetic database config  (full_dbs) or '
+                  'no MSA at all  (none)')
 flags.DEFINE_enum('model_preset', 'monomer',
                   ['monomer', 'monomer_casp14', 'monomer_ptm', 'multimer'],
                   'Choose preset model configuration - the monomer model, '
@@ -194,6 +195,11 @@ def predict_structure(
   msa_output_dir = os.path.join(output_dir, 'msas')
   if not os.path.exists(msa_output_dir):
     os.makedirs(msa_output_dir)
+  
+  #if does not use MSA, create an empty features.pkl
+  if FLAGS.db_preset=='none':
+    from parafold.create_empty_feature import empty_feature
+    empty_feature(fasta_path,output_dir)
 
   # Get features.
   t_0 = time.time()
@@ -337,11 +343,8 @@ def predict_structure(
     with open(relax_metrics_path, 'w') as f:
       f.write(json.dumps(relax_metrics, indent=4))
 
-
-def main(argv):
-  if len(argv) > 1:
-    raise app.UsageError('Too many command-line arguments.')
-
+def get_data_pipline(argv):
+"""get the data_pipline, can be skipped if MSA is skipped"""
   for tool_name in (
       'jackhmmer', 'hhblits', 'hhsearch', 'hmmsearch', 'hmmbuild', 'kalign'):
     if not FLAGS[f'{tool_name}_binary_path'].value:
@@ -412,16 +415,29 @@ def main(argv):
       use_precomputed_msas=FLAGS.use_precomputed_msas)
 
   if run_multimer_system:
-    num_predictions_per_model = FLAGS.num_multimer_predictions_per_model
     data_pipeline = pipeline_multimer.DataPipeline(
         monomer_data_pipeline=monomer_data_pipeline,
         jackhmmer_binary_path=FLAGS.jackhmmer_binary_path,
         uniprot_database_path=FLAGS.uniprot_database_path,
         use_precomputed_msas=FLAGS.use_precomputed_msas)
   else:
-    num_predictions_per_model = 1
     data_pipeline = monomer_data_pipeline
+  return data_pipeline
 
+def main(argv):
+  if len(argv) > 1:
+    raise app.UsageError('Too many command-line arguments.')
+
+  if run_multimer_system:
+    num_predictions_per_model = FLAGS.num_multimer_predictions_per_model
+  else:
+    num_predictions_per_model = 1
+  
+  if FLAGS.db_preset!='none':
+    data_pipeline=get_data_pipline(argv)
+  else:
+    data_pipeline=None
+    
   model_runners = {}
   if FLAGS.model_names:
     model_names = FLAGS.model_names
