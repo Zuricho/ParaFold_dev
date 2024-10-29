@@ -343,7 +343,7 @@ def predict_structure(
     with open(relax_metrics_path, 'w') as f:
       f.write(json.dumps(relax_metrics, indent=4))
 
-def get_data_pipline(argv):
+def get_data_pipeline():
 """get the data_pipline, can be skipped if MSA is skipped"""
   for tool_name in (
       'jackhmmer', 'hhblits', 'hhsearch', 'hmmsearch', 'hmmbuild', 'kalign'):
@@ -434,7 +434,7 @@ def main(argv):
     num_predictions_per_model = 1
   
   if FLAGS.db_preset!='none':
-    data_pipeline=get_data_pipline(argv)
+    data_pipeline=get_data_pipeline()
   else:
     data_pipeline=None
     
