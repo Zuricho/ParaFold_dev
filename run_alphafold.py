@@ -433,9 +433,9 @@ def main(argv):
     num_predictions_per_model = 1
 
     # the feature.pkl should already exist, otherwise rise error
-    feature_file_list = [os.path.join(FLAGS.output_dir, fasta_name, 'feature.pkl') 
+    feature_file_list = [os.path.join(FLAGS.output_dir, fasta_name, 'features.pkl') 
                          for fasta_name in fasta_names]
-    missing_files = [file for file in file_paths if not os.path.isfile(file)]
+    missing_files = [file for file in feature_file_list if not os.path.isfile(file)]
     if missing_files:
       raise FileNotFoundError(f"Error: The following files do not exist: {', '.join(missing_files)}")
     
