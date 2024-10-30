@@ -98,10 +98,11 @@ flags.DEFINE_string('obsolete_pdbs_path', None, 'Path to file containing a '
                     'mapping from obsolete PDB IDs to the PDB IDs of their '
                     'replacements.')
 flags.DEFINE_enum('db_preset', 'full_dbs',
-                  ['full_dbs', 'reduced_dbs'],
+                  ['full_dbs', 'reduced_dbs', 'none_dbs'],
                   'Choose preset MSA database configuration - '
                   'smaller genetic database config (reduced_dbs) or '
-                  'full genetic database config  (full_dbs)')
+                  'full genetic database config  (full_dbs) or '
+                  'no MSA at all  (none_dbs)')
 flags.DEFINE_enum('model_preset', 'monomer',
                   ['monomer', 'monomer_casp14', 'monomer_ptm', 'multimer'],
                   'Choose preset model configuration - the monomer model, '
@@ -175,16 +176,17 @@ def _jnp_to_np(output: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def predict_structure(
-    fasta_path: str,
-    fasta_name: str,
-    output_dir_base: str,
-    data_pipeline: Union[pipeline.DataPipeline, pipeline_multimer.DataPipeline],
-    model_runners: Dict[str, model.RunModel],
-    amber_relaxer: relax.AmberRelaxation,
-    benchmark: bool,
-    random_seed: int,
-    models_to_relax: ModelsToRelax,
-    run_feature: bool):
+  fasta_path: str,
+  fasta_name: str,
+  output_dir_base: str,
+  data_pipeline: Union[pipeline.DataPipeline, pipeline_multimer.DataPipeline],
+  model_runners: Dict[str, model.RunModel],
+  amber_relaxer: relax.AmberRelaxation,
+  benchmark: bool,
+  random_seed: int,
+  models_to_relax: ModelsToRelax,
+  run_feature: bool):
+    
   """Predicts structure using AlphaFold for the given sequence."""
   logging.info('Predicting %s', fasta_name)
   timings = {}
@@ -337,11 +339,8 @@ def predict_structure(
     with open(relax_metrics_path, 'w') as f:
       f.write(json.dumps(relax_metrics, indent=4))
 
-
-def main(argv):
-  if len(argv) > 1:
-    raise app.UsageError('Too many command-line arguments.')
-
+def get_data_pipeline():
+  """get the data_pipline, can be skipped if MSA is skipped"""
   for tool_name in (
       'jackhmmer', 'hhblits', 'hhsearch', 'hmmsearch', 'hmmbuild', 'kalign'):
     if not FLAGS[f'{tool_name}_binary_path'].value:
@@ -363,11 +362,6 @@ def main(argv):
               should_be_set=run_multimer_system)
   _check_flag('uniprot_database_path', 'model_preset',
               should_be_set=run_multimer_system)
-
-  if FLAGS.model_preset == 'monomer_casp14':
-    num_ensemble = 8
-  else:
-    num_ensemble = 1
 
   # Check for duplicate FASTA file names.
   fasta_names = [pathlib.Path(p).stem for p in FLAGS.fasta_paths]
@@ -412,16 +406,44 @@ def main(argv):
       use_precomputed_msas=FLAGS.use_precomputed_msas)
 
   if run_multimer_system:
-    num_predictions_per_model = FLAGS.num_multimer_predictions_per_model
     data_pipeline = pipeline_multimer.DataPipeline(
         monomer_data_pipeline=monomer_data_pipeline,
         jackhmmer_binary_path=FLAGS.jackhmmer_binary_path,
         uniprot_database_path=FLAGS.uniprot_database_path,
         use_precomputed_msas=FLAGS.use_precomputed_msas)
   else:
-    num_predictions_per_model = 1
     data_pipeline = monomer_data_pipeline
+  return data_pipeline
 
+def main(argv):
+  if len(argv) > 1:
+    raise app.UsageError('Too many command-line arguments.')
+
+  if FLAGS.db_preset!='none_dbs':
+    data_pipeline=get_data_pipeline()
+  else:
+    data_pipeline=None
+
+  fasta_names = [pathlib.Path(p).stem for p in FLAGS.fasta_paths]
+  
+  run_multimer_system = 'multimer' in FLAGS.model_preset
+  if run_multimer_system:
+    num_predictions_per_model = FLAGS.num_multimer_predictions_per_model
+  else:
+    num_predictions_per_model = 1
+
+    # the feature.pkl should already exist, otherwise rise error
+    feature_file_list = [os.path.join(FLAGS.output_dir, fasta_name, 'features.pkl') 
+                         for fasta_name in fasta_names]
+    missing_files = [file for file in feature_file_list if not os.path.isfile(file)]
+    if missing_files:
+      raise FileNotFoundError(f"Error: The following files do not exist: {', '.join(missing_files)}")
+    
+  if FLAGS.model_preset == 'monomer_casp14':
+    num_ensemble = 8
+  else:
+    num_ensemble = 1
+    
   model_runners = {}
   if FLAGS.model_names:
     model_names = FLAGS.model_names
